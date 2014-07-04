@@ -1,8 +1,4 @@
 import cv2
-# import time
-# import picamera
-import numpy as np
-# from math import fabs, sqrt
 from collections import Counter
 
 ###ARCHITECTURE_OF_LASER_MOUSE
@@ -25,11 +21,6 @@ class Laser(object):
 
     def add(self, x, y, w, h, state):
         Laser.transition += 1
-        #x, y's value is zero = OFF value = ON
-        # if x != 0 and y != 0:
-        #     Laser.laserstate.append(True)
-        # else:
-        #     Laser.laserstate.append(False)
         Laser.x.append(x)
         Laser.y.append(y)
         Laser.size.append((w, h))
@@ -37,6 +28,7 @@ class Laser(object):
         Laser.laserstate.append(state)
         if Laser.transition > 7:
             Laser.transitionscount += 1
+            print "transitionscount", Laser.transitionscount
 
     def clear(self):
         # when the transition trend breaks, then clear the old transition values of x, y, size
@@ -45,7 +37,6 @@ class Laser(object):
         Laser.x = []
         Laser.y = []
         Laser.size = []
-        Laser.transitionscount = 0
 
     #get the area of laser spot
     def rectarea(self):
@@ -61,7 +52,7 @@ class Laser(object):
     #get the coordinate to start click or drag from
     def actioncoordinate(self):
 
-    #remove the values of 0 from the lists Laser.x and Laser.y
+        #remove the values of 0 from the lists Laser.x and Laser.y
         Laser.x = filter(lambda a: a != 0, Laser.x)
         Laser.y = filter(lambda b: b != 0, Laser.y)
 
@@ -79,19 +70,16 @@ class Laser(object):
         farcount = 0 #outside of the ROIFACTOR limit
         localx = Laser.x
         localy = Laser.y
-        #size variations for click
-        # areas = self.rectarea()
         xdiff = self.difference(localx)
         ydiff = self.difference(localy)
 
         for x, y in zip(xdiff, ydiff):
             if x < ROIFACTOR and y < ROIFACTOR:
                 nearcount += 1
-                break
             else:
                 farcount += 1
-                break
 
+        #nearcount means within boundary as per ROIFACTOR value
         if nearcount > farcount:
             return True
         else:
@@ -99,7 +87,7 @@ class Laser(object):
 
 
 #ROI increment factor
-ROIFACTOR = 4
+ROIFACTOR = 2
 
 #decision making value for click or drag, in a click atleast 7on/off states are visible
 TRANSITIONS = 7
@@ -111,21 +99,27 @@ JERKS = 2
 class Motion(object):
     def __init__(self):
 
+        #current working frame
         self.frame = None
-        #boundary
+        #ROI boundary
         self.boundx = 0
         self.boundy = 0
         self.boundw = 640
         self.boundh = 480
         #states
         self.previoustate = 0
-        self.objects = []
-        self.sequence = 0
-        #old x, y, w, h
+        #previous x, y, w, h
         self.x = 0
         self.y = 0
         self.w = 0
         self.h = 0
+        #mouse actions
+        self.rightclick = False
+        self.leftclick = False
+        self.dragging = False
+        #mouse action coordinates
+        self.actionx = 0
+        self.actiony = 0
 
     def gettransformedboundingrect(self, x, y, w, h):
         w *= ROIFACTOR
@@ -141,25 +135,17 @@ class Motion(object):
     def removejerks(self, x, y, w, h):
         if abs(x - self.x) >= JERKS:
             self.x = x
-            # print "x updated", self.x
         if abs(y - self.y) >= JERKS:
             self.y = y
-            # print "y updated", self.y
         if abs(w - self.w) >= JERKS:
             self.w = w
-            # print "w updated", self.w
         if abs(h - self.h) >= JERKS:
             self.h = h
-            # print "h updated", self.h
-        #else send the old value which is self
         return self.x, self.y, self.w, self.h
 
     def laserposition(self):
         frame = self.frame
         x = y = w = h = 0
-        #for roi
-        # img = img[y1:y2, x1:x2]
-        # frame = frame[self.boundy: self.boundy + self.boundh, self.boundx: self.boundx + self.boundw]
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         ret, thresh = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY)
         contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -170,20 +156,11 @@ class Motion(object):
             cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 1, cv2.CV_AA)
             cv2.imshow("images", frame)
             cv2.waitKey(42)
-            #for roi
-            # x += self.boundx
-            # y += self.boundy
-            # self.boundx, self.boundy, self.boundw, self.boundh = self.gettransformedboundingrect(x, y, w, h)
         else:
             laser_state = 0
-            #for roi
-            # self.boundx = 0
-            # self.boundy = 0
-            # self.boundw = 640
-            # self.boundh = 480
         return x, y, w, h, laser_state
 
-    # computer
+    # algorithm check on computer
     def pccheck(self):
         capture = cv2.VideoCapture("blinkie.h264")
         laserobject = Laser()
@@ -199,36 +176,44 @@ class Motion(object):
                 # print "pre:", self.previoustate, "post:", laserstate
                 laserobject.add(x, y, w, h, laserstate)
                 self.previoustate = laserstate
-                print "transition", laserobject.transition, laserobject.x, laserobject.y
+                # print "transition", laserobject.transition, laserobject.x, laserobject.y
                 if laserobject.transition % TRANSITIONS == 0: #and not self.buttonpress and not self.dragging:
-                    print "on/off:", laserobject.transition
-                    actionx, actiony = laserobject.actioncoordinate()
-                    print "actionx:", actionx, "actiony:", actiony
+                    # print "on/off:", laserobject.transition
                     clickornot = laserobject.boundaryevaluate()
                     if clickornot:
-                        print "click at:", actionx, actiony
-                        self.buttonpress = True
+                        self.actionx, self.actiony = laserobject.actioncoordinate()
+                        print "action-x:", self.actionx, "action-y:", self.actiony
+                        if laserobject.transitionscount <= 3:
+                            self.leftclick = True
+                            print "left click set"
+                        elif laserobject.transitionscount > 3:
+                            self.rightclick = True
+                            self.leftclick = False
+                            print "right click set"
                         laserobject.clear()
-                        # break
-                    else:
-                        print "drag start at:", actionx, actiony
-                        self.dragging = True
-                        laserobject.clear()
-                        # break
 
-                # else:
-                #     if laserobject.transition % 2 == 0:
-                #         if self.buttonpress:
-                #             print "click by mouse"
-                #         elif self.dragging:
-                #             print "dragging the mouse"
+                    else:
+                        if laserobject.transitionscount > 3 and not self.dragging:
+                            self.dragging = True
+
+                        if self.dragging:
+                            print "dragging from:", self.actionx, self.actiony
+                        laserobject.clear()
 
             else:
-                self.buttonpress = False
-                self.dragging = False
-                # laserobject.transition = 0
-                # x, y, w, h = self.removejerks(x, y, w, h)
-                print "simple mouse movements", x, y, w, h
+                if self.leftclick:
+                    print "left click at:", self.actionx, self.actiony
+                    self.leftclick = False
+
+                if self.rightclick:
+                    print "right click at:", self.actionx, self.actiony
+                    self.rightclick = False
+
+                if self.dragging:
+                    print "stop drag"
+                    self.dragging = False
+
+                # print "simple mouse movements", x, y, w, h
                 laserobject.clear()
-#pc
+                laserobject.transitionscount = 0
 Motion().pccheck()
