@@ -61,23 +61,14 @@ class Laser(object):
     #get the coordinate to start click or drag from
     def actioncoordinate(self):
 
-    #remove the values of 0 from the Laser.x and Laser.y lists
+    #remove the values of 0 from the lists Laser.x and Laser.y
         Laser.x = filter(lambda a: a != 0, Laser.x)
         Laser.y = filter(lambda b: b != 0, Laser.y)
-        # for x in Laser.x:
-        #     if x == 0:
-        #         i = Laser.x.index(x)
-        #         Laser.x.pop(i)
-        # for y in Laser.y:
-        #     if y == 0:
-        #         j = Laser.y.index(y)
-        #         Laser.y.pop(j)
 
         commonx = Counter(Laser.x)
         commonx = commonx.most_common(1)[0][0]
         commony = Counter(Laser.y)
         commony = commony.most_common(1)[0][0]
-
         return commonx, commony
 
     #blink within boundary is a click else drag
@@ -93,17 +84,13 @@ class Laser(object):
         xdiff = self.difference(localx)
         ydiff = self.difference(localy)
 
-        for x in xdiff:
-            for y in ydiff:
-                #size variations for click
-                # for area in areas:
-                #     if area < 200:
-                if x < ROIFACTOR and y < ROIFACTOR:
-                    nearcount += 1
-                    break
-                else:
-                    farcount += 1
-                    break
+        for x, y in zip(xdiff, ydiff):
+            if x < ROIFACTOR and y < ROIFACTOR:
+                nearcount += 1
+                break
+            else:
+                farcount += 1
+                break
 
         if nearcount > farcount:
             return True
