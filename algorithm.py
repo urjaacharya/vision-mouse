@@ -5,6 +5,11 @@ import numpy as np
 # from math import fabs, sqrt
 from collections import Counter
 
+###ARCHITECTURE_OF_LASER_MOUSE
+#(within) 3 transitionscount = RIGHT_CLICK
+#(outside) 3 transitionscount + extra = DRAG
+#(within) transitionscount < 3 = LEFT_CLICK
+
 
 class Laser(object):
     #transition objects recorded
