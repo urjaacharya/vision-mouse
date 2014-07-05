@@ -1,18 +1,18 @@
 import cv2
 from collections import Counter
 
-###ARCHITECTURE_OF_LASER_MOUSE
-#(within) 3 transitionscount = RIGHT_CLICK
+###PROPOSED ARCHITECTURE_OF_LASER_MOUSE
+#(within) transitionscount < 3 and continual beam after that = LEFT_CLICK
 #(outside) 3 transitionscount + extra = DRAG
-#(within) transitionscount < 3 = LEFT_CLICK
+#(within) transitionscount > 3 and more and continual beam after that = RIGHT_CLICK
 
 
 class Laser(object):
     #transition objects recorded
-    transition = 0
     x = []
     y = []
     size = []
+    transition = 0
     laserstate = []
     transitionscount = 0
 
@@ -26,17 +26,14 @@ class Laser(object):
         Laser.size.append((w, h))
         #transition = counter of on/off laser objects
         Laser.laserstate.append(state)
-        if Laser.transition > 7:
-            Laser.transitionscount += 1
-            print "transitionscount", Laser.transitionscount
 
     def clear(self):
         # when the transition trend breaks, then clear the old transition values of x, y, size
         # and count of transitions
-        Laser.transition = 0
         Laser.x = []
         Laser.y = []
         Laser.size = []
+        Laser.transition = 0
 
     #get the area of laser spot
     def rectarea(self):
@@ -45,41 +42,45 @@ class Laser(object):
             area.append(item[0]*item[1])
         return area
 
-    #get difference between adjacent pixels while transiting from on to off states
+    #get difference between adjacent pixels while transitiong from on to off states
     def difference(self, params):
         return [abs(params[n] - params[n - 1]) for n in range(1, len(params))]
 
     #get the coordinate to start click or drag from
     def actioncoordinate(self):
-
         #remove the values of 0 from the lists Laser.x and Laser.y
         Laser.x = filter(lambda a: a != 0, Laser.x)
         Laser.y = filter(lambda b: b != 0, Laser.y)
-
-        commonx = Counter(Laser.x)
-        commonx = commonx.most_common(1)[0][0]
-        commony = Counter(Laser.y)
-        commony = commony.most_common(1)[0][0]
-        return commonx, commony
+        frequentx = Counter(Laser.x)
+        frequentx = frequentx.most_common(1)[0][0]
+        frequenty = Counter(Laser.y)
+        frequenty = frequenty.most_common(1)[0][0]
+        return frequentx, frequenty
 
     #blink within boundary is a click else drag
     def boundaryevaluate(self):
         #get difference of consecutive x and y values
         #if more near values then click else drag
-        nearcount = 0 #within the ROIFACTOR limit
-        farcount = 0 #outside of the ROIFACTOR limit
+        nearcount = 0 #within the NEARFACTOR limit
+        farcount = 0 #outside of the NEARFACTOR limit
         localx = Laser.x
         localy = Laser.y
         xdiff = self.difference(localx)
         ydiff = self.difference(localy)
-
-        for x, y in zip(xdiff, ydiff):
-            if x < ROIFACTOR and y < ROIFACTOR:
-                nearcount += 1
-            else:
-                farcount += 1
-
-        #nearcount means within boundary as per ROIFACTOR value
+        # for x, y in zip(xdiff, ydiff):
+        #     if x < NEARFACTOR and y < NEARFACTOR:
+        #         nearcount += 1
+        #     else:
+        #         farcount += 1
+        for x in xdiff:
+            for y in ydiff:
+                if x < NEARFACTOR and y < NEARFACTOR:
+                    nearcount += 1
+                    break
+                else:
+                    farcount += 1
+                    break
+        #nearcount means within boundary as per NEARFACTOR value
         if nearcount > farcount:
             return True
         else:
@@ -87,7 +88,7 @@ class Laser(object):
 
 
 #ROI increment factor
-ROIFACTOR = 2
+NEARFACTOR = 4
 
 #decision making value for click or drag, in a click atleast 7on/off states are visible
 TRANSITIONS = 7
@@ -122,8 +123,8 @@ class Motion(object):
         self.actiony = 0
 
     def gettransformedboundingrect(self, x, y, w, h):
-        w *= ROIFACTOR
-        h *= ROIFACTOR
+        w *= NEARFACTOR
+        h *= NEARFACTOR
         x -= w/2
         if x < 0:
             x = 0
@@ -170,50 +171,52 @@ class Motion(object):
             if frame is None:
                 break
             x, y, w, h, laserstate = self.laserposition()
-            # print "x:", x, "y:", y, "w:", w, "h:", h, "state:", laserstate
             # CLICK/DRAG DECISION MAKING upon Transition
             if self.previoustate != laserstate:
-                # print "pre:", self.previoustate, "post:", laserstate
                 laserobject.add(x, y, w, h, laserstate)
                 self.previoustate = laserstate
-                # print "transition", laserobject.transition, laserobject.x, laserobject.y
-                if laserobject.transition % TRANSITIONS == 0: #and not self.buttonpress and not self.dragging:
-                    # print "on/off:", laserobject.transition
+                if laserobject.transition % TRANSITIONS == 0:
+                    laserobject.transitionscount += 1
+                    self.actionx, self.actiony = laserobject.actioncoordinate()
                     clickornot = laserobject.boundaryevaluate()
                     if clickornot:
-                        self.actionx, self.actiony = laserobject.actioncoordinate()
-                        print "action-x:", self.actionx, "action-y:", self.actiony
-                        if laserobject.transitionscount <= 3:
+                        print "within----right or left click"
+                        print "transitions counter", laserobject.transitionscount
+                        #if drag is active, even if laserobject is seen as within the boundary, it will be ignored
+                        if laserobject.transitionscount <= 3 and not self.dragging:
                             self.leftclick = True
                             print "left click set"
-                        elif laserobject.transitionscount > 3:
+                        if laserobject.transitionscount > 3 and not self.dragging:
                             self.rightclick = True
                             self.leftclick = False
                             print "right click set"
                         laserobject.clear()
 
                     else:
-                        if laserobject.transitionscount > 3 and not self.dragging:
+                        print "outside----dragging"
+                        print "transitions counter", laserobject.transitionscount
+                        if laserobject.transitionscount > 3:
                             self.dragging = True
-
-                        if self.dragging:
+                            self.rightclick = False
+                            self.leftclick = False
                             print "dragging from:", self.actionx, self.actiony
                         laserobject.clear()
-
+            #as soon as the transitions stop(continual beam arrives)--do a right or left click as per the flag
             else:
+                print "continual beam arrived"
                 if self.leftclick:
                     print "left click at:", self.actionx, self.actiony
                     self.leftclick = False
-
                 if self.rightclick:
                     print "right click at:", self.actionx, self.actiony
                     self.rightclick = False
-
                 if self.dragging:
                     print "stop drag"
                     self.dragging = False
 
                 # print "simple mouse movements", x, y, w, h
+                #clear the last 7 transitions
                 laserobject.clear()
+                #clear the count of a single 7 transitions
                 laserobject.transitionscount = 0
 Motion().pccheck()
