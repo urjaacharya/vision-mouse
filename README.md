@@ -4,4 +4,4 @@ numpy
 
 opencv 2.4.9
 
-python 2.7.3
+python 2.7.8
