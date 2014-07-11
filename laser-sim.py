@@ -65,9 +65,9 @@ class MouseLocation( Frame ):
       if self.recording == True:
          self.writeFile(str(self.toWrite)+","+str(event.x)+","+str(event.y) +"\r\n")
       
-   def writeFile( self, string):
+   def writeFile( self, string ):
       now = time.time()
-      if now - self.lastWriten > 42:
+      if now - self.lastWriten > .042:
         self.fil.write( string )
         self.lastWriten = now
 MouseLocation().mainloop()
