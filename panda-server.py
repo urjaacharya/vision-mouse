@@ -1,20 +1,17 @@
 #Panda board as server
 import sys
-import json
 import socket
 import select
 import threading
 
 
 class Server(threading.Thread):
-    host = None
-    port = None
-    threadlist = []
 
     def __init__(self, host, port):
         threading.Thread.__init__(self)
         self.host = str(host)
         self.port = int(port)
+        self.threadlist = []
         try:
             self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -41,6 +38,7 @@ class Server(threading.Thread):
 
         for handle in self.threadlist:
             handle.join()
+
         self.serversocket.close()
 
 
@@ -95,17 +93,22 @@ class ClientThread(threading.Thread):
         try:
             self.client.close()
             print "client closing"
-            sys.exit(1)
         except socket.error as error:
             print error
 
-    #server.start()
+        return
+
+    #client.start()
     def run(self):
-        self.clienthandler()
+        flag = self.clienthandler()
+        if flag:
+            return
 
 try:
     server = Server("192.168.0.1", 9090)
-    server.start()
+    flag = server.start()
+    if flag:
+        server.exit()
 except socket.error as error:
     print error
     sys.exit(1)

@@ -1,10 +1,8 @@
 #raspberry pi as client
 import io
 import cv2
-import csv
 import sys
-import time
-import json
+import laser
 import socket
 import picamera
 import numpy as np
@@ -55,6 +53,7 @@ class Motion(object):
             camera.framerate = 24
             camera.start_recording('timed.h264')
             stream = io.BytesIO()
+            laserobject = laser.Laser()
             while True:
                 camera.capture(stream, format="jpeg", use_video_port=True)
                 frame = np.fromstring(stream.getvalue(), dtype=np.uint8)
@@ -71,7 +70,8 @@ class Motion(object):
                     print "ELSE:"
                     x, y, w, h, laserstate = self.laserposition()
                     print "xs", x, y, w, h, laserstate
-                    clientsocket.send("m:" + str(x) + "," + str(y) + '\0')
+                    decision = laserobject.adder(x, y, w, h, laserstate)
+                    clientsocket.send(str(decision) + '\0')
 
 
 class Client(object):
