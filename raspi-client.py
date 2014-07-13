@@ -6,22 +6,25 @@ import laser
 import socket
 import picamera
 import numpy as np
+#this needs to be made dynamic too
 AIV_threshold = 60
-ROI_FACTOR = 25
+# ROI_FACTOR = 25
 JERKS = 2
 
 
-#class that analyses motions of laser
+#class that analyzes motions of laser
 class Motion(object):
-
+    """This class has methods to find laser spot and send it to container class for appropriate motions. The client
+    makes this object and calls on the method lasermain() with its client socket as parameter.
+    """
     def __init__(self):
         # current working frame
         self.frame = None
-        # for roi
-        self.boundx = 0
-        self.boundy = 0
-        self.boundw = 640
-        self.boundh = 480
+        # # for roi
+        # self.boundx = 0
+        # self.boundy = 0
+        # self.boundw = 640
+        # self.boundh = 480
         #states
         self.previoustate = 0
         #previous x, y, w, h
@@ -49,7 +52,6 @@ class Motion(object):
         if y < 0:
             y = 0
         return x, y, w, h
-
 
     def removejerks(self, x, y, w, h):
         """This function discards the small motions of the lasers caused by hand movements.
@@ -90,7 +92,7 @@ class Motion(object):
         frame = self.frame
         x = y = w = h = 0
         #roi
-        frame = frame[self.boundy: self.boundy + self.boundh, self.boundx: self.boundx + self.boundw]
+        # frame = frame[self.boundy: self.boundy + self.boundh, self.boundx: self.boundx + self.boundw]
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         #thresholding has been done only for bright white
         ret, thresh = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY)
@@ -99,17 +101,17 @@ class Motion(object):
             laser_state = 1
             cnt = contours[0]
             x, y, w, h = cv2.boundingRect(cnt)
-            #for roi
-            x += self.boundx
-            y += self.boundy
-            self.boundx, self.boundy, self.boundw, self.boundh = self.increasedecreaseroi(x, y, w, h)
+            # #for roi
+            # x += self.boundx
+            # y += self.boundy
+            # self.boundx, self.boundy, self.boundw, self.boundh = self.increasedecreaseroi(x, y, w, h)
         else:
             laser_state = 0
             #for roi
-            self.boundx = 0
-            self.boundy = 0
-            self.boundw = 640
-            self.boundh = 480
+            # self.boundx = 0
+            # self.boundy = 0
+            # self.boundw = 640
+            # self.boundh = 480
         return x, y, w, h, laser_state
 
     def show(self, data, delay):
@@ -157,8 +159,8 @@ class Motion(object):
 
 class Client(object):
     """This class is a client class for raspberry pi to connect to the server running on the panda board. Currently the
-    server is being run on a local machine which is providing the raspberry pi with an ip via the ethernet. The local
-    machine's ethernet ip is set to 192.168.0.1. Since the server has its socket opened at 192.168.0.1 and listening on
+    server is being run on a local machine which is providing the raspberry pi with an IP via the ethernet. The local
+    machine's ethernet IP is set to 192.168.0.1. Since the server has its socket opened at 192.168.0.1 and listening on
     the port 9999, we have created a client socket for the same host and port.
 
     The __init__ method connects to the server and sets connected variable to True. After which, the handle method is
