@@ -18,8 +18,8 @@ class Laser(object):
         #states
         self.continualzero = None
         self.continualone = None
-        self.toggleto0 = None
-        self.toggleto1 = None
+        self.toggle1to0 = None
+        self.toggle0to1 = None
         self.one = 0
         self.zero = 0
 
@@ -33,70 +33,74 @@ class Laser(object):
         #first we clear the buffer to size 10 before making any analysis
         self.bufferclear()
 
-        #no states have been initialized to
-        if self.continualzero is None and self.continualone is None and self.toggleto0 is None and self.toggleto1 is None:
+        #no states have been initialized to---->occurs for the very first time to set it to a state--->in case of a reset
+        if self.continualzero is None and self.continualone is None and self.toggle1to0 is None and self.toggle0to1 is None:
             continualzero = self.continualbeam(self.laserstate, 0)
             if not continualzero:
                 self.continualzero = False
                 continualone = self.continualbeam(self.laserstate, 1)
                 if not continualone:
                     self.continualone = False
-                    toggleto0 = self.toggle(state)
-                    if toggleto0:
-                        self.toggleto0 = toggleto0
+                    toggle1to0 = self.toggle(state)
+                    if toggle1to0:
+                        self.toggle1to0 = toggle1to0
                         self.zero += 1
                     else:
-                        self.toggleto1 = True
+                        self.toggle0to1 = True
                         self.one += 1
                 else:
                     self.continualone = True
             else:
                 self.continualzero = True
 
+            return
+
         if self.continualzero:
             if state == 1:
-                self.toggleto1 = True
-                self.continualzero = False
+                #laser moves into the camera view---->inside the projected screen
+                self.toggle0to1 = True
+                #make all else false
+                self.toggle1to0 = False
                 self.continualone = False
-                self.toggleto0 = False
+                self.continualzero = False
             else:
                 print "we send nothing"
 
         if self.continualone:
             if state == 0:
-                self.toggleto0 = True
+                self.toggle1to0 = True
                 self.continualone = False
                 self.continualzero = False
-                self.toggleto1 = False
+                self.toggle0to1 = False
                 self.client.send('md' + str(self.x[-2]) + ';' + str(self.y[-2]) + '\0')
             else:
                 self.client.send('m' + str(self.x[-1]) + ';' + str(self.y[-1]) + '\0')
 
-        if self.toggleto0:
+        if self.toggle1to0:
             if state == 1:
-                self.toggleto1 = True
-                self.toggleto0 = False
+                self.toggle0to1 = True
+                self.toggle1to0 = False
                 self.continualzero = False
                 self.continualone = False
                 self.client.send('md' + str(self.x[-1]) + ';' + str(self.y[-1]) + '\0')
             else:
                 self.zero += 1
                 if self.zero > THRESHHOLD:
-                    self.toggleto0 = False
+                    self.toggle1to0 = False
                     self.continualzero = True
                     print "went outside"
 
-        if self.toggleto1:
+        if self.toggle0to1:
             if state == 0:
-                self.toggleto0 = True
-                self.toggleto1 = False
+                self.toggle1to0 = True
+                self.toggle0to1 = False
                 self.continualone = False
                 self.continualzero = False
                 self.client.send('md' + str(self.x[-2]) + ';' + str(self.y[-2]) + '\0')
             else:
                 self.one += 1
                 if self.one > THRESHHOLD:
-                    self.toggleto1 = False
+                    self.toggle0to1 = False
                     self.continualone = True
                 self.client.send('m' + str(self.x[-1]) + ';' + str(self.y[-1]) + '\0')
 
