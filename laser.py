@@ -1,5 +1,4 @@
 import socket
-from collections import Counter
 
 THRESHHOLD = 4
 
@@ -109,13 +108,13 @@ class Laser(object):
             print "0 to 1"
             return False
 
-    # check for continuous 0's or 1's within the CONTINUALBEAMTHRESH
+    # check for continuous 0's or 1's within the THRESH
     def continualbeam(self, samplestate, factor):
         continual = 0
         for state in samplestate:
             if state == factor:
                 continual += 1
-                if continual >= CONTINUALBEAMTHRESH:
+                if continual >= THRESHHOLD:
                     return True
             else:
                 return False
