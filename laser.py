@@ -73,6 +73,7 @@ class Laser(object):
             if state == 1:
                 #continual zero to state 1 means laser is in camera view now
                 self.toggle0to1 = True
+                #MOVE
                 self.client.send('m' + str(self.x[-1]) + ';' + str(self.y[-1]) + '\0')
                 #make all else False
                 self.toggle1to0 = False
@@ -89,7 +90,8 @@ class Laser(object):
                 self.toggle1to0 = True
                 #x[-2] is sent because current state has x value=0, so we mouse down at previous x's value which
                 # is surely one since we toggled from 1 to 0
-                # toggle occurred from 1 to 0 --> mouse down
+                # toggle occurred from 1 to 0
+                #MOUSE DOWN
                 self.client.send('md' + str(self.x[-2]) + ';' + str(self.y[-2]) + '\0')
                 #make all else False
                 self.continualone = False
@@ -97,6 +99,7 @@ class Laser(object):
                 self.toggle0to1 = False
             else:
                 #when laser is still on, send move command
+                #MOVE
                 self.client.send('m' + str(self.x[-1]) + ';' + str(self.y[-1]) + '\0')
             return
 
@@ -106,7 +109,9 @@ class Laser(object):
                 self.toggle0to1 = True
                 self.transition1 += 1
                 if self.transition1 <= TRANS and self.transition2 <= TRANS:
+                    #MOVE
                     self.client.send('m' + str(self.x[-1]) + ';' + str(self.y[-1]) + '\0')
+                #MOUSE DOWN
                 self.client.send('md' + str(self.x[-1]) + ';' + str(self.y[-1]) + '\0')
                 #make all else False
                 self.toggle1to0 = False
@@ -118,6 +123,7 @@ class Laser(object):
                 if self.zero == THRESHHOLD:
                     self.toggle1to0 = False
                     self.continualzero = True
+                    #MOUSE RELEASE
                     self.client.send('mr' + str(self.x[-2]) + ';' + str(self.y[-2]) + '\0')
                     print "went outside of screen"
             return
@@ -127,10 +133,11 @@ class Laser(object):
                 self.toggle1to0 = True
                 self.transition2 += 1
                 if self.transition1 <= TRANS and self.transition2 <= TRANS:
-                    #drag
+                    #MOUSE DOWN AND MOVE
                     self.client.send('md' + str(self.x[-2]) + ';' + str(self.y[-2]) + '\0')
                     self.client.send('m' + str(self.x[-1]) + ';' + str(self.y[-1]) + '\0')
                 else:
+                    #MOUSE DOWN
                     self.client.send('md')
                 # make all else False
                 self.toggle0to1 = False
@@ -142,7 +149,9 @@ class Laser(object):
                 if self.one == THRESHHOLD:
                     self.toggle0to1 = False
                     self.continualone = True
+                    #MOUSE RELEASE
                     self.client.send('mr' + str(self.x[-1]) + ';' + str(self.y[-1]) + '\0')
+                #MOVE
                 self.client.send('m' + str(self.x[-1]) + ';' + str(self.y[-1]) + '\0')
             return
 
