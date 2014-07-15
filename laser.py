@@ -124,7 +124,7 @@ class Laser(object):
                     self.toggle1to0 = False
                     self.continualzero = True
                     #MOUSE RELEASE
-                    self.client.send('mr' + str(self.x[-2]) + ';' + str(self.y[-2]) + '\0')
+                    self.client.send('mr' + str(self.x[-3]) + ';' + str(self.y[-3]) + '\0')
                     print "went outside of screen"
             return
 
@@ -135,10 +135,10 @@ class Laser(object):
                 if self.transition1 <= TRANS and self.transition2 <= TRANS:
                     #MOUSE DOWN AND MOVE
                     self.client.send('md' + str(self.x[-2]) + ';' + str(self.y[-2]) + '\0')
-                    self.client.send('m' + str(self.x[-1]) + ';' + str(self.y[-1]) + '\0')
+                    self.client.send('m' + str(self.x[-2]) + ';' + str(self.y[-2]) + '\0')
                 else:
                     #MOUSE DOWN
-                    self.client.send('md')
+                    self.client.send('md' + str(self.x[-2]) + ';' + str(self.y[-2]) + '\0')
                 # make all else False
                 self.toggle0to1 = False
                 self.continualone = False
