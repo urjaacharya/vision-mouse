@@ -6,12 +6,7 @@ import laser
 import socket
 import picamera
 import numpy as np
-
-
-AIV_threshold = 60
-NEARFACTOR = 4
-TRANSITIONS = 7
-JERKS = 2
+# AIV_threshold = 60
 
 
 #class that analyses motions of laser
@@ -51,31 +46,20 @@ class Motion(object):
         with picamera.PiCamera() as camera:
             camera.resolution = (640, 480)
             camera.framerate = 24
-            camera.start_recording('timed.h264')
             stream = io.BytesIO()
-            laserobject = laser.Laser()
+            laserobject = laser.Laser(clientsocket)
             while True:
                 camera.capture(stream, format="jpeg", use_video_port=True)
                 frame = np.fromstring(stream.getvalue(), dtype=np.uint8)
                 stream.seek(0)
                 self.frame = cv2.imdecode(frame, 1)
-                hsv = cv2.cvtColor(self.frame, cv2.COLOR_BGR2HSV)
-                h, s, v = cv2.split(hsv)
-                average = np.average(v)
-                print "FIRST: average of value channel", average
-                if average > AIV_threshold:
-                    print "IF: average is greater than AIV_threshold =", AIV_threshold, " Camera Exposure Correction"
-                    camera.exposure_compensation = camera.exposure_compensation - int((average - AIV_threshold) / 10)
-                else:
-                    print "ELSE:"
-                    x, y, w, h, laserstate = self.laserposition()
-                    print "xs", x, y, w, h, laserstate
-                    decision = laserobject.adder(x, y, w, h, laserstate)
-                    clientsocket.send(str(decision) + '\0')
+                x, y, w, h, laserstate = self.laserposition()
+                print "xs", x, y, w, h, laserstate
+                laserobject.container(x, y, w, h, laserstate)
 
 
 class Client(object):
-    def __init__(self, host="192.168.0.1", port=9090):
+    def __init__(self, host="192.168.0.1", port=9999):
         self.host = str(host)
         self.port = int(port)
         self.connected = False
