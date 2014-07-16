@@ -2,6 +2,7 @@
 import sys
 import socket
 import select
+from pymouse import PyMouse
 import threading
 
 
@@ -52,7 +53,6 @@ class ClientThread(threading.Thread):
     #receive data from the client
     def receiver(self):
         self.data = ''
-        flag = False
         errors = False
         while not flag:
             try:
@@ -61,29 +61,27 @@ class ClientThread(threading.Thread):
                     if self.data[-1] == '\0':
                         self.data = self.data[:-1]
                         self.data = str(self.data)
-                        flag = False
                         return errors
                 except IndexError as error:
                     print error
-                    flag = True
                     errors = True
                     return errors
             except socket.error as error:
                 print socket.error
                 errors = True
-                flag = True
                 return errors
 
     def clienthandler(self):
         inputs = [self.client, sys.stdin]
         running = True
+        m = PyMouse()
         while running:
             inputready, outputready, exceptready = select.select(inputs, [], [])
             for s in inputready:
                 if s == self.client:
                     errors = self.receiver()
                     if not errors:
-                        print self.data
+                        self.parser(self.data, m)
                     else:
                         running = False
                 elif s == sys.stdin:
@@ -96,16 +94,26 @@ class ClientThread(threading.Thread):
         except socket.error as error:
             print error
 
-        return
+        return True
 
     #client.start()
     def run(self):
         flag = self.clienthandler()
         if flag:
-            return
+            return True
+
+    #message parser
+    def parser(self, data, m):
+        split = data.split(';')
+        if split[0] == 'm':
+            m.move(split[1], split[2])
+        elif split[0] == 'md':
+            m.click(split[1], split[2])
+        elif split[0] == 'mr':
+            m.release(split[1], split[2])
 
 try:
-    server = Server("192.168.0.1", 9090)
+    server = Server("192.168.0.1", 9999)
     flag = server.start()
     if flag:
         server.exit()
