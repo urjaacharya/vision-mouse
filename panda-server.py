@@ -71,6 +71,17 @@ class ClientThread(threading.Thread):
                 errors = True
                 return errors
 
+                # message parser
+
+    def parser(self, data, m):
+        split = data.split(';')
+        if split[0] == 'm':
+            m.move(int(split[1]), int(split[2]))
+        elif split[0] == 'md':
+            m.click(int(split[1]), int(split[2]))
+        elif split[0] == 'mr':
+            m.release(int(split[1]), int(split[2]))
+
     def clienthandler(self):
         inputs = [self.client, sys.stdin]
         running = True
@@ -101,16 +112,6 @@ class ClientThread(threading.Thread):
         flag = self.clienthandler()
         if flag:
             return True
-
-    #message parser
-    def parser(self, data, m):
-        split = data.split(';')
-        if split[0] == 'm':
-            m.move(split[1], split[2])
-        elif split[0] == 'md':
-            m.click(split[1], split[2])
-        elif split[0] == 'mr':
-            m.release(split[1], split[2])
 
 try:
     server = Server("192.168.0.1", 9999)

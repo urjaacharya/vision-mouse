@@ -74,7 +74,7 @@ class Laser(object):
                 #continual zero to state 1 means laser is in camera view now
                 self.toggle0to1 = True
                 #MOVE
-                self.client.send('m' + str(self.x[-1]) + ';' + str(self.y[-1]) + '\0')
+                self.client.send('m' + ';' + str(self.x[-1]) + ';' + str(self.y[-1]) + '\0')
                 #make all else False
                 self.toggle1to0 = False
                 self.continualone = False
@@ -92,7 +92,7 @@ class Laser(object):
                 # is surely one since we toggled from 1 to 0
                 # toggle occurred from 1 to 0
                 #MOUSE DOWN
-                self.client.send('md' + str(self.x[-2]) + ';' + str(self.y[-2]) + '\0')
+                self.client.send('md' + ';' + str(self.x[-2]) + ';' + str(self.y[-2]) + '\0')
                 #make all else False
                 self.continualone = False
                 self.continualzero = False
@@ -100,7 +100,7 @@ class Laser(object):
             else:
                 #when laser is still on, send move command
                 #MOVE
-                self.client.send('m' + str(self.x[-1]) + ';' + str(self.y[-1]) + '\0')
+                self.client.send('m' + ';' + str(self.x[-1]) + ';' + str(self.y[-1]) + '\0')
             return
 
         if self.toggle1to0:
@@ -110,9 +110,9 @@ class Laser(object):
                 self.transition1 += 1
                 if self.transition1 <= TRANS and self.transition2 <= TRANS:
                     #MOVE
-                    self.client.send('m' + str(self.x[-1]) + ';' + str(self.y[-1]) + '\0')
+                    self.client.send('m' + ';' + str(self.x[-1]) + ';' + str(self.y[-1]) + '\0')
                 #MOUSE DOWN
-                self.client.send('md' + str(self.x[-1]) + ';' + str(self.y[-1]) + '\0')
+                self.client.send('md' + ';' + str(self.x[-1]) + ';' + str(self.y[-1]) + '\0')
                 #make all else False
                 self.toggle1to0 = False
                 self.continualzero = False
@@ -124,7 +124,7 @@ class Laser(object):
                     self.toggle1to0 = False
                     self.continualzero = True
                     #MOUSE RELEASE
-                    self.client.send('mr' + str(self.x[-3]) + ';' + str(self.y[-3]) + '\0')
+                    self.client.send('mr' + ';' + str(self.x[-3]) + ';' + str(self.y[-3]) + '\0')
                     print "went outside of screen"
             return
 
@@ -134,11 +134,11 @@ class Laser(object):
                 self.transition2 += 1
                 if self.transition1 <= TRANS and self.transition2 <= TRANS:
                     #MOUSE DOWN AND MOVE
-                    self.client.send('md' + str(self.x[-2]) + ';' + str(self.y[-2]) + '\0')
-                    self.client.send('m' + str(self.x[-2]) + ';' + str(self.y[-2]) + '\0')
+                    self.client.send('md' + ';' + str(self.x[-2]) + ';' + str(self.y[-2]) + '\0')
+                    self.client.send('m' + ';' + str(self.x[-2]) + ';' + str(self.y[-2]) + '\0')
                 else:
                     #MOUSE DOWN
-                    self.client.send('md' + str(self.x[-2]) + ';' + str(self.y[-2]) + '\0')
+                    self.client.send('md' + ';' + str(self.x[-2]) + ';' + str(self.y[-2]) + '\0')
                 # make all else False
                 self.toggle0to1 = False
                 self.continualone = False
@@ -150,9 +150,9 @@ class Laser(object):
                     self.toggle0to1 = False
                     self.continualone = True
                     #MOUSE RELEASE
-                    self.client.send('mr' + str(self.x[-1]) + ';' + str(self.y[-1]) + '\0')
+                    self.client.send('mr' + ';' + str(self.x[-1]) + ';' + str(self.y[-1]) + '\0')
                 #MOVE
-                self.client.send('m' + str(self.x[-1]) + ';' + str(self.y[-1]) + '\0')
+                self.client.send('m' + ';' + str(self.x[-1]) + ';' + str(self.y[-1]) + '\0')
             return
 
     #checks the toggle of states, and returns True if toggle is from 1to0 and False if toggle is from 0to1
