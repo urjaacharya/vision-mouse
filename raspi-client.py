@@ -6,7 +6,9 @@ import laser
 import socket
 import picamera
 import numpy as np
-# AIV_threshold = 60
+AIV_threshold = 60
+ROI_FACTOR = 25
+JERKS = 2
 
 
 #class that analyses motions of laser
@@ -16,6 +18,11 @@ class Motion(object):
 
         # current working frame
         self.frame = None
+        # boundary
+        self.boundx = 0
+        self.boundy = 0
+        self.boundw = 640
+        self.boundh = 480
         #states
         self.previoustate = 0
         #previous x, y, w, h
@@ -24,10 +31,37 @@ class Motion(object):
         self.w = 0
         self.h = 0
 
+    def increasedecreaseroi(self, x, y, w, h):
+        w *= ROIFACTOR
+        h *= ROIFACTOR
+        x -= w / 2
+        if x < 0:
+            x = 0
+        y -= h / 2
+        if y < 0:
+            y = 0
+        return x, y, w, h
+
+    def removejerks(self, x, y, w, h):
+        if abs(x - self.x) >= JERKS:
+            self.x = x
+            # print "x updated", self.x
+        if abs(y - self.y) >= JERKS:
+            self.y = y
+            # print "y updated", self.y
+        if abs(w - self.w) >= JERKS:
+            self.w = w
+            # print "w updated", self.w
+        if abs(h - self.h) >= JERKS:
+            self.h = h
+            # print "h updated", self.h
+        return self.x, self.y, self.w, self.h
+
     def laserposition(self):
         frame = self.frame
         x = y = w = h = 0
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        #thresholding has been done only for bright white
         ret, thresh = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY)
         contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         if len(contours) > 0:
@@ -53,8 +87,26 @@ class Motion(object):
                 frame = np.fromstring(stream.getvalue(), dtype=np.uint8)
                 stream.seek(0)
                 self.frame = cv2.imdecode(frame, 1)
+                self.frame = self.frame[self.boundy: self.boundy + self.boundh, self.boundx: self.boundx + self.boundw]
+                hsv = cv2.cvtColor(self.frame, cv2.COLOR_BGR2HSV)
+                h, s, v = cv2.split(hsv)
+                average = np.average(v)
+                if average > AIV_threshold:
+                    print "correction"
+                    temporary = camera.exposure_compensation
+                    temporary -= int((average - AIV_threshold)/10)
+                    try:
+                        if temporary < -25:
+                            camera.exposure_compensation = -25
+                        elif temporary > 25:
+                            camera.exposure_compensation = 25
+                        else:
+                            camera.exposure_compensation = temporary
+                    except picamera.PiCameraValueError as error:
+                        print error
                 x, y, w, h, laserstate = self.laserposition()
                 print "xs", x, y, w, h, laserstate
+                x, y, w, h = self.removejerks(x, y, w, h)
                 laserobject.container(x, y, w, h, laserstate)
 
 
