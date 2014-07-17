@@ -1,7 +1,7 @@
 import socket
 
 #number of ones or zeros to be considered continual
-THRESHHOLD = 10
+THRESHHOLD = 6
 #number of transitions to begin Drag
 TRANS = 3
 
@@ -21,10 +21,10 @@ class Laser(object):
         self.client = clientsocket
 
         #states
-        self.continualzero = None#continual zeros
-        self.continualone = None#continual ones
-        self.toggle1to0 = None#one to zero
-        self.toggle0to1 = None#zero to one
+        self.continualzero = False#continual zeros
+        self.continualone = False#continual ones
+        self.toggle1to0 = False#one to zero
+        self.toggle0to1 = False#zero to one
         self.one = 0#number of ones in toggle0to1 state before reaching threshold for continualone
         self.zero = 0#number of zeros in toggle1to0 state before reaching threshold for continualzero
 
@@ -42,11 +42,12 @@ class Laser(object):
         self.bufferclear()
 
         #to initialize to a state, after a reset or when starting for first time
-        if self.continualzero is None and self.continualone is None and self.toggle1to0 is None and self.toggle0to1 is None:
-            continualzero = self.continualbeam(self.laserstate, 0)
+        if self.continualzero is False and self.continualone is False and self.toggle1to0 is False and self.toggle0to1 \
+                is False:
+            continualzero = self.continualbeam(self.laserstate[:: -1], 0)
             if not continualzero:
                 self.continualzero = False
-                continualone = self.continualbeam(self.laserstate, 1)
+                continualone = self.continualbeam(self.laserstate[:: -1], 1)
                 if not continualone:
                     self.continualone = False
                     toggle1to0 = self.toggle(state)
