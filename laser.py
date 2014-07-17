@@ -1,9 +1,9 @@
 import socket
 
 #number of ones or zeros to be considered continual
-THRESHHOLD = 4
+THRESHHOLD = 10
 #number of transitions to begin Drag
-TRANS = 2
+TRANS = 3
 
 
 class Laser(object):
