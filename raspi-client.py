@@ -15,10 +15,9 @@ JERKS = 2
 class Motion(object):
 
     def __init__(self):
-
         # current working frame
         self.frame = None
-        # boundary
+        # for roi
         self.boundx = 0
         self.boundy = 0
         self.boundw = 640
@@ -32,8 +31,17 @@ class Motion(object):
         self.h = 0
 
     def increasedecreaseroi(self, x, y, w, h):
-        w *= ROIFACTOR
-        h *= ROIFACTOR
+        """This function is used to narrow the search window once laser has been spotted to its immediate neighbourhood
+            comprising of pixels' size ROI_FACTOR.
+            Args: int
+                x, y, w, h: coordinates of laser spot
+            Yields: int
+                The width and height of the laser spot is increased by the ROI_FACTOR. The value of x is adjusted
+                by decreasing half of the width, and so is the y value but decreased by half of the height. If the
+                values of x and y gets less than 0, it is restrained to value 0
+        """
+        w *= ROI_FACTOR
+        h *= ROI_FACTOR
         x -= w / 2
         if x < 0:
             x = 0
@@ -42,7 +50,16 @@ class Motion(object):
             y = 0
         return x, y, w, h
 
+
     def removejerks(self, x, y, w, h):
+        """This function discards the small motions of the lasers caused by hand movements.
+            Args: int
+                x, y, w, h: coordinates of laser spot
+            Yields: int
+                if the new coordinates are larger than old coordinates by JERKS(threshold), these new coordinates are
+                    used,
+                else the old coordinates is used
+        """
         if abs(x - self.x) >= JERKS:
             self.x = x
             # print "x updated", self.x
@@ -58,8 +75,22 @@ class Motion(object):
         return self.x, self.y, self.w, self.h
 
     def laserposition(self):
+        """The function calculates the coordinates of the laser spot. It thresholds the image based on its white pixels
+            only, in the range 200-255. From the thresholded image, contour is found out distinctly, which is the laser
+            spot. This laser spot is approximated via a bounding rectangle, thereby giving us coordinates x, y, w,h
+            Args: numpy array/cv2 object
+                Class variable frame
+            Yields: int
+                x, y, w, h: coordinates of laser spot
+
+            Here, when no laser spot is found, whole frame is scanned but once laser spot has been found, in the next
+            detection phase, the frame is sliced up using the previous laser spot boundaries, given by increasedecrease-
+            roi
+        """
         frame = self.frame
         x = y = w = h = 0
+        #roi
+        frame = frame[self.boundy: self.boundy + self.boundh, self.boundx: self.boundx + self.boundw]
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         #thresholding has been done only for bright white
         ret, thresh = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY)
@@ -68,8 +99,17 @@ class Motion(object):
             laser_state = 1
             cnt = contours[0]
             x, y, w, h = cv2.boundingRect(cnt)
+            #for roi
+            x += self.boundx
+            y += self.boundy
+            self.boundx, self.boundy, self.boundw, self.boundh = self.increasedecreaseroi(x, y, w, h)
         else:
             laser_state = 0
+            #for roi
+            self.boundx = 0
+            self.boundy = 0
+            self.boundw = 640
+            self.boundh = 480
         return x, y, w, h, laser_state
 
     def show(self, data, delay):
@@ -77,6 +117,12 @@ class Motion(object):
         cv2.waitKey(delay)
 
     def lasermain(self, clientsocket):
+        """This function opens the camera, sets the framerate, corrects the exposure, calls laserposition() method to
+        get the coordinates of laser spot and passed to removejerks() method. And then sent to container class Laser()
+        Args: clientsocket
+            This socket arg is passed to the container class Laser which interprets the laser coordinates and motions
+            and sends to the server.
+        """
         with picamera.PiCamera() as camera:
             camera.resolution = (640, 480)
             camera.framerate = 24
@@ -87,7 +133,6 @@ class Motion(object):
                 frame = np.fromstring(stream.getvalue(), dtype=np.uint8)
                 stream.seek(0)
                 self.frame = cv2.imdecode(frame, 1)
-                self.frame = self.frame[self.boundy: self.boundy + self.boundh, self.boundx: self.boundx + self.boundw]
                 hsv = cv2.cvtColor(self.frame, cv2.COLOR_BGR2HSV)
                 h, s, v = cv2.split(hsv)
                 average = np.average(v)
@@ -111,6 +156,15 @@ class Motion(object):
 
 
 class Client(object):
+    """This class is a client class for raspberry pi to connect to the server running on the panda board. Currently the
+    server is being run on a local machine which is providing the raspberry pi with an ip via the ethernet. The local
+    machine's ethernet ip is set to 192.168.0.1. Since the server has its socket opened at 192.168.0.1 and listening on
+    the port 9999, we have created a client socket for the same host and port.
+
+    The __init__ method connects to the server and sets connected variable to True. After which, the handle method is
+    run, which creates Motion class object. And this object calls the method lasermain() and passed the client socket
+    to it.
+    """
     def __init__(self, host="192.168.0.1", port=9999):
         self.host = str(host)
         self.port = int(port)
