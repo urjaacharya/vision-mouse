@@ -2,8 +2,7 @@ import socket
 
 #number of ones or zeros to be considered continual
 THRESHHOLD = 6
-#number of transitions to begin Drag
-TRANS = 3
+CLICK = 3
 
 
 class Laser(object):
@@ -29,7 +28,8 @@ class Laser(object):
         self.zero = 0#number of zeros in toggle1to0 state before reaching threshold for continualzero
 
         self.transition1 = 0
-        self.transition2 = 0
+        self.mousedown = False
+        self.dragstart = False
 
     def container(self, x, y, w, h, state):
         self.x.append(x)
@@ -44,6 +44,7 @@ class Laser(object):
         #to initialize to a state, after a reset or when starting for first time
         if self.continualzero is False and self.continualone is False and self.toggle1to0 is False and self.toggle0to1 \
                 is False:
+            #continuity is checked from last of the list
             continualzero = self.continualbeam(self.laserstate[:: -1], 0)
             if not continualzero:
                 self.continualzero = False
@@ -70,90 +71,68 @@ class Laser(object):
         #TODO boundary check has not been implemented
         if self.continualzero:
             self.transition1 = 0
-            self.transition2 = 0
             if state == 1:
-                #continual zero to state 1 means laser is in camera view now
                 self.toggle0to1 = True
-                #MOVE
-                self.client.send('m' + ';' + str(self.x[-1]) + ';' + str(self.y[-1]) + '\0')
-                #make all else False
-                self.toggle1to0 = False
-                self.continualone = False
                 self.continualzero = False
+                self.client.send('m' + ';' + str(self.x[-1]) + ';' + str(self.y[-1]) + '\0')
             else:
-                print "no laser seen-->do nothing"
+                print "still zero"
             return
 
         if self.continualone:
             self.transition1 = 0
-            self.transition2 = 0
             if state == 0:
                 self.toggle1to0 = True
-                #x[-2] is sent because current state has x value=0, so we mouse down at previous x's value which
-                # is surely one since we toggled from 1 to 0
-                # toggle occurred from 1 to 0
-                #MOUSE DOWN
-                self.client.send('md' + ';' + str(self.x[-2]) + ';' + str(self.y[-2]) + '\0')
-                #make all else False
                 self.continualone = False
-                self.continualzero = False
-                self.toggle0to1 = False
             else:
-                #when laser is still on, send move command
-                #MOVE
                 self.client.send('m' + ';' + str(self.x[-1]) + ';' + str(self.y[-1]) + '\0')
+                print "still one"
             return
 
         if self.toggle1to0:
             if state == 1:
-                #toggled to 1 from 0 again--->still send a mouse down
                 self.toggle0to1 = True
-                self.transition1 += 1
-                if self.transition1 <= TRANS and self.transition2 <= TRANS:
-                    #MOVE
-                    self.client.send('m' + ';' + str(self.x[-1]) + ';' + str(self.y[-1]) + '\0')
-                #MOUSE DOWN
-                self.client.send('md' + ';' + str(self.x[-1]) + ';' + str(self.y[-1]) + '\0')
-                #make all else False
                 self.toggle1to0 = False
-                self.continualzero = False
-                self.continualone = False
+                self.client.send('m' + ';' + str(self.x[-1]) + ';' + str(self.y[-1]) + '\0')
+                self.transition1 += 1
+                if self.transition1 == CLICK:
+                    self.mousedown = True
+                    #dont click yet
+                elif self.transition1 > CLICK and self.mousedown:
+                    self.client.send('md' + ';' + str(self.x[-1]) + ';' + str(self.y[-1]) + '\0')
+                    self.dragstart = True
             else:
-                #zero came in sequence
                 self.zero += 1
                 if self.zero == THRESHHOLD:
-                    self.toggle1to0 = False
                     self.continualzero = True
-                    #MOUSE RELEASE
-                    self.client.send('mr' + ';' + str(self.x[-3]) + ';' + str(self.y[-3]) + '\0')
-                    print "went outside of screen"
+                    self.toggle1to0 = False
+                    if self.mousedown or self.dragstart:
+                        ind = self.indexes(self.laserstate)
+                        self.client.send('mr' + ';' + str(self.x[ind]) + ';' + str(self.y[ind]) + '\0')
+                    self.mousedown = False
+                    self.dragstart = False
             return
 
         if self.toggle0to1:
             if state == 0:
                 self.toggle1to0 = True
-                self.transition2 += 1
-                if self.transition1 <= TRANS and self.transition2 <= TRANS:
-                    #MOUSE DOWN AND MOVE
-                    self.client.send('md' + ';' + str(self.x[-2]) + ';' + str(self.y[-2]) + '\0')
-                    self.client.send('m' + ';' + str(self.x[-2]) + ';' + str(self.y[-2]) + '\0')
-                else:
-                    #MOUSE DOWN
-                    self.client.send('md' + ';' + str(self.x[-2]) + ';' + str(self.y[-2]) + '\0')
-                # make all else False
                 self.toggle0to1 = False
-                self.continualone = False
-                self.continualzero = False
-
+                self.transition1 += 1
+                if self.transition1 == CLICK:
+                    self.mousedown = True
+                if self.transition1 > CLICK and self.mousedown:
+                    self.client.send('md' + ';' + str(self.x[-2]) + ';' + str(self.y[-2]) + '\0')
             else:
                 self.one += 1
+                ind = self.indexes(self.laserstate)
                 if self.one == THRESHHOLD:
                     self.toggle0to1 = False
                     self.continualone = True
-                    #MOUSE RELEASE
-                    self.client.send('mr' + ';' + str(self.x[-1]) + ';' + str(self.y[-1]) + '\0')
-                #MOVE
-                self.client.send('m' + ';' + str(self.x[-1]) + ';' + str(self.y[-1]) + '\0')
+                    if self.mousedown or self.dragstart:
+                        self.client.send('mr' + ';' + str(self.x[ind]) + ';' + str(self.y[ind]) + '\0')
+                    self.mousedown = False
+                    self.dragstart = False
+                self.client.send('m' + ';' + str(self.x[ind]) + ';' + str(self.y[ind]) + '\0')
             return
 
     #checks the toggle of states, and returns True if toggle is from 1to0 and False if toggle is from 0to1
@@ -185,3 +164,11 @@ class Laser(object):
                 self.w.pop(0)
                 self.h.pop(0)
                 self.laserstate.pop(0)
+
+    #get index of laser state one from last
+    def indexes(self, states):
+        ind = 0
+        for i, data in enumerate(states):
+            if data == 1:
+                ind = i
+        return ind
