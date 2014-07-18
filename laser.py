@@ -1,7 +1,7 @@
 import socket
 
 #number of ones or zeros to be considered continual
-THRESHHOLD = 6
+THRESHHOLD = 5
 #number of transitions to do a click, above which drag starts
 CLICK = 3
 
@@ -113,6 +113,7 @@ class Laser(object):
                     self.mousedown = False
                     self.dragstart = False
                     self.transition1 = 0
+                    self.zero = 0
             return
 
         if self.toggle0to1:
@@ -141,6 +142,7 @@ class Laser(object):
                     self.mousedown = False
                     self.dragstart = False
                     self.transition1 = 0
+                    self.one = 0
             return
 
     #checks the toggle of states, and returns True if toggle is from 1to0 and False if toggle is from 0to1
