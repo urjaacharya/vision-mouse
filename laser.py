@@ -2,6 +2,7 @@ import socket
 
 #number of ones or zeros to be considered continual
 THRESHHOLD = 6
+#number of transitions to do a click, above which drag starts
 CLICK = 3
 
 
