@@ -5,6 +5,9 @@ import select
 from pymouse import PyMouse
 import threading
 
+FACTORX = int(1366/640)
+FACTORY = int(768/480)
+
 
 class Server(threading.Thread):
 
@@ -67,20 +70,21 @@ class ClientThread(threading.Thread):
                     errors = True
                     return errors
             except socket.error as error:
-                print socket.error
+                print error
                 errors = True
                 return errors
 
-                # message parser
-
+    # mouse actions parser
     def parser(self, data, m):
         split = data.split(';')
+        scalex = int(split[1]) * FACTORX
+        scaley = int(split[2]) * FACTORY
         if split[0] == 'm':
-            m.move(int(split[1]), int(split[2]))
+            m.move(scalex, scaley)
         elif split[0] == 'md':
-            m.click(int(split[1]), int(split[2]))
+            m.click(scalex, scaley)
         elif split[0] == 'mr':
-            m.release(int(split[1]), int(split[2]))
+            m.release(scalex, scaley)
 
     def clienthandler(self):
         inputs = [self.client, sys.stdin]
@@ -93,6 +97,7 @@ class ClientThread(threading.Thread):
                     errors = self.receiver()
                     if not errors:
                         self.parser(self.data, m)
+                        # print self.data
                     else:
                         running = False
                 elif s == sys.stdin:
