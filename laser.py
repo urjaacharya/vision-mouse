@@ -167,7 +167,7 @@ class Laser(object):
 
     # buffer clear if length of buffer equal 20--->pop 10 of them, First In First Out(FIFO)
     def bufferclear(self):
-        if len(self.x) == 20:
+        if len(self.x) == 15:
             for i in range(0, 10):
                 self.x.pop(0)
                 self.y.pop(0)
