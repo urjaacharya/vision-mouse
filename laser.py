@@ -31,6 +31,7 @@ class Laser(object):
         self.transition1 = 0
         self.mousedown = False
         self.dragstart = False
+        self.down = False
 
     def container(self, x, y, w, h, state):
         self.x.append(x)
@@ -90,6 +91,7 @@ class Laser(object):
 
         if self.toggle1to0:
             if state == 1:
+                self.zero = 0
                 self.toggle0to1 = True
                 self.toggle1to0 = False
                 self.client.send('m' + ';' + str(self.x[-1]) + ';' + str(self.y[-1]) + '\0')
@@ -98,26 +100,30 @@ class Laser(object):
                     self.mousedown = True
                 elif self.transition1 > CLICK:
                     self.dragstart = True
-                if self.dragstart:
+                    self.mousedown = False
+                if self.dragstart and not self.down:
                     self.client.send('md' + ';' + str(self.x[-1]) + ';' + str(self.y[-1]) + '\0')
+                    self.down = True
+
             else:
                 self.zero += 1
                 if self.zero == THRESHHOLD:
+                    self.zero = 0
                     ind = self.indexes(self.laserstate)
                     self.continualzero = True
                     self.toggle1to0 = False
                     if self.dragstart:
                         self.client.send('mr' + ';' + str(self.x[ind]) + ';' + str(self.y[ind]) + '\0')
+                        self.dragstart = False
+                        self.down = False
                     if self.mousedown:
-                        self.client.send('mr' + ';' + str(self.x[ind]) + ';' + str(self.y[ind]) + '\0')
-                    self.mousedown = False
-                    self.dragstart = False
+                        self.mousedown = False
                     self.transition1 = 0
-                    self.zero = 0
             return
 
         if self.toggle0to1:
             if state == 0:
+                self.one = 0
                 self.toggle1to0 = True
                 self.toggle0to1 = False
                 self.transition1 += 1
@@ -125,24 +131,27 @@ class Laser(object):
                     self.mousedown = True
                 if self.transition1 > CLICK:
                     self.dragstart = True
-                if self.dragstart:
+                    self.mousedown = False
+                if self.dragstart and not self.down:
                     self.client.send('md' + ';' + str(self.x[-2]) + ';' + str(self.y[-2]) + '\0')
+                    self.down = True
             else:
                 self.one += 1
                 ind = self.indexes(self.laserstate)
                 self.client.send('m' + ';' + str(self.x[ind]) + ';' + str(self.y[ind]) + '\0')
                 if self.one == THRESHHOLD:
+                    self.one = 0
                     self.toggle0to1 = False
                     self.continualone = True
                     if self.mousedown:
                         self.client.send('md' + ';' + str(self.x[ind]) + ';' + str(self.y[ind]) + '\0')
                         self.client.send('mr' + ';' + str(self.x[ind]) + ';' + str(self.y[ind]) + '\0')
+                        self.mousedown = False
                     if self.dragstart:
                         self.client.send('mr' + ';' + str(self.x[ind]) + ';' + str(self.y[ind]) + '\0')
-                    self.mousedown = False
-                    self.dragstart = False
+                        self.dragstart = False
+                        self.down = False
                     self.transition1 = 0
-                    self.one = 0
             return
 
     #checks the toggle of states, and returns True if toggle is from 1to0 and False if toggle is from 0to1

@@ -82,7 +82,7 @@ class ClientThread(threading.Thread):
         if split[0] == 'm':
             m.move(scalex, scaley)
         elif split[0] == 'md':
-            m.click(scalex, scaley)
+            m.press(scalex, scaley)
         elif split[0] == 'mr':
             m.release(scalex, scaley)
 
@@ -96,8 +96,8 @@ class ClientThread(threading.Thread):
                 if s == self.client:
                     errors = self.receiver()
                     if not errors:
+                        print "decision ", self.data
                         self.parser(self.data, m)
-                        # print self.data
                     else:
                         running = False
                 elif s == sys.stdin:
