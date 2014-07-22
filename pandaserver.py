@@ -82,6 +82,7 @@ class ClientThread(threading.Thread):
         if split[0] == 'm':
             m.move(scalex, scaley)
         elif split[0] == 'md':
+	#press not click
             m.press(scalex, scaley)
         elif split[0] == 'mr':
             m.release(scalex, scaley)
