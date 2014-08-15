@@ -5,9 +5,11 @@ import select
 from pymouse import PyMouse
 import threading
 
-FACTORX = int(1366/640)
-FACTORY = int(768/480)
 
+image_width = 640.0
+image_height = 480.0
+
+calibration_success = False
 
 class Server(threading.Thread):
 
@@ -15,35 +17,33 @@ class Server(threading.Thread):
         threading.Thread.__init__(self)
         self.host = str(host)
         self.port = int(port)
-        self.threadlist = []
+        self.thread_list = []
         try:
-            self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            self.serversocket.bind((self.host, self.port))
-            self.serversocket.listen(5)
-
+            self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            self.server_socket.bind((self.host, self.port))
+            self.server_socket.listen(5)
         except socket.error as error:
             print error
 
     def run(self):
-        inputs = [self.serversocket, sys.stdin]
+        inputs = [self.server_socket, sys.stdin]
         run = True
         while run:
-            inputready, outputready, exceptready = select.select(inputs, [], [])
-            for s in inputready:
-                if s == self.serversocket:
-                    handle = ClientThread(self.serversocket.accept())
-                    self.threadlist.append(handle)
+            input_ready, output_ready, except_ready = select.select(inputs, [], [])
+            for s in input_ready:
+                if s == self.server_socket:
+                    handle = ClientThread(self.server_socket.accept())
+                    self.thread_list.append(handle)
                     handle.start()
 
                 elif s == sys.stdin:
                     run = False
                     sys.exit(1)
 
-        for handle in self.threadlist:
+        for handle in self.thread_list:
             handle.join()
-
-        self.serversocket.close()
+        self.server_socket.close()
 
 
 class ClientThread(threading.Thread):
@@ -53,7 +53,6 @@ class ClientThread(threading.Thread):
         self.address = address
         self.data = None
 
-    #receive data from the client
     def receiver(self):
         self.data = ''
         errors = False
@@ -74,31 +73,74 @@ class ClientThread(threading.Thread):
                 errors = True
                 return errors
 
-    # mouse actions parser
     def parser(self, data, m):
+        width = m.screen_size()[0]
+        height = m.screen_size()[1]
+        factorx = width/image_width
+        factory = height/image_height
         split = data.split(';')
-        scalex = int(split[1]) * FACTORX
-        scaley = int(split[2]) * FACTORY
-        if split[0] == 'm':
-            m.move(scalex, scaley)
-        elif split[0] == 'md':
-	#press not click
-            m.press(scalex, scaley)
-        elif split[0] == 'mr':
-            m.release(scalex, scaley)
+        x = int(split[1])
+        y = int(split[2])
+        if x != 0 and y != 0:
+            scaledx = x * factorx
+            scaledy = y * factory
+            if split[0] == 'm':
+                m.move(scaledx, scaledy)
+            elif split[0] == 'md':
+                m.press(scaledx, scaledy)
+            elif split[0] == 'mr':
+                m.release(scaledx, scaledy)
 
-    def clienthandler(self):
+    def calibrate(self, client, root):
+        client.send('start' + '\0')
+        running = True
+        inputs = [client, sys.stdin]
+        global calibration_success
+        while running:
+            input_ready, output_ready, except_ready = select.select(inputs, [], [])
+            for s in input_ready:
+                if s == client:
+                    data = self.receiver()
+                    if 'done' in self.data:
+                        calibration_success = True
+                        print "success"
+                        root.destroy()
+                        return
+                    elif 'failed' in self.data:
+                        calibration_success = False
+                        print "failed"
+                        root.destroy()
+                        return
+
+    def splash_screen(self, client):
+        import Tkinter as t
+        import splash as s
+        root = t.Tk()
+        sp = s.SplashScreen(root)
+        sp.config(bg="#fff")
+        root.after(1000, self.calibrate, client, root)
+        root.mainloop()
+        if calibration_success:
+            client.send('done' + '\0')
+        else:
+            client.send('failed' + '\0')
+
+
+    def client_handler(self):
         inputs = [self.client, sys.stdin]
         running = True
         m = PyMouse()
         while running:
-            inputready, outputready, exceptready = select.select(inputs, [], [])
-            for s in inputready:
+            input_ready, output_ready, except_ready = select.select(inputs, [], [])
+            for s in input_ready:
                 if s == self.client:
                     errors = self.receiver()
                     if not errors:
-                        print "decision ", self.data
-                        self.parser(self.data, m)
+                        if 'splash' in self.data:
+                            self.splash_screen(self.client)
+                        else:
+                            print "decision ", self.data
+                            self.parser(self.data, m)
                     else:
                         running = False
                 elif s == sys.stdin:
@@ -113,14 +155,13 @@ class ClientThread(threading.Thread):
 
         return True
 
-    #client.start()
     def run(self):
-        flag = self.clienthandler()
+        flag = self.client_handler()
         if flag:
             return True
 
 try:
-    server = Server("192.168.0.1", 9999)
+    server = Server("0.0.0.0", 9999)
     flag = server.start()
     if flag:
         server.exit()
