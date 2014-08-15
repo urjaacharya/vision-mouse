@@ -1,8 +1,9 @@
 from Tkinter import *
 import time
 
+
 class SplashScreen(Frame):
-    def __init__(self, master=None, width=1, height=0.6, useFactor=True):
+    def __init__(self, master=None, width=1, height=1, useFactor=True):
         Frame.__init__(self, master)
         self.pack(side=TOP, fill=BOTH, expand=YES)
 

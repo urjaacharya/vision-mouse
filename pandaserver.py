@@ -96,15 +96,25 @@ class ClientThread(threading.Thread):
         running = True
         inputs = [client, sys.stdin]
         global calibration_success
+        global image_width, image_height
         while running:
             input_ready, output_ready, except_ready = select.select(inputs, [], [])
             for s in input_ready:
                 if s == client:
-                    data = self.receiver()
+                    errors = self.receiver()
                     if 'done' in self.data:
-                        calibration_success = True
-                        print "success"
                         root.destroy()
+                        calibration_success = True
+                        split = self.data.split(';')
+                        print split
+                        status = split[0]
+                        cx = float(split[1])
+                        cy = float(split[2])
+                        cw = float(split[3])
+                        ch = float(split[4])
+                        image_width = cx + cw
+                        image_height = cy + ch
+                        print status
                         return
                     elif 'failed' in self.data:
                         calibration_success = False
@@ -124,7 +134,6 @@ class ClientThread(threading.Thread):
             client.send('done' + '\0')
         else:
             client.send('failed' + '\0')
-
 
     def client_handler(self):
         inputs = [self.client, sys.stdin]

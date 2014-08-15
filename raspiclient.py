@@ -231,6 +231,9 @@ def calibrate():
             gray = cv2.cvtColor(blur, cv2.COLOR_BGR2GRAY)
             ret, thresh = cv2.threshold(gray, 127, 255, 0)
             contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            cv2.drawContours(bgr, contours, -1, (255, 0, 0), 2)
+            cv2.imshow('bgr', bgr)
+            cv2.waitKey(1000/24)
             areas = [cv2.contourArea(c) for c in contours]
             max_index = np.argmax(areas)
             cnt = contours[max_index]
@@ -238,7 +241,7 @@ def calibrate():
             if cx != 0:
             #     status = quad_check(cx, cy, cw, ch)
             #     if status:
-                    return True
+                return True
             #     else:
             #         return False
             else:
@@ -284,7 +287,9 @@ def ask_for_splash_screen(client_socket):
                     if 'start' in value:
                         status = calibrate()
                         if status:
-                            client_socket.send('done' + '\0')
+                            print "done", cx, cy, cw, ch
+                            client_socket.send('done' + ';' + str(cx) + ';' + str(cy) + ';' + str(cw) + ';' + str(ch) +\
+                                               '\0')
                             return status
                         else:
                             client_socket.send('failed' + '\0')
